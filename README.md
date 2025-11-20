@@ -1,77 +1,12 @@
 # Prisma SQLite Adapters Benchmark
 
-Comprehensive benchmark comparing Prisma SQLite adapter implementations under Bun runtime with Prisma 7.0.0.
+Comprehensive performance and correctness benchmark comparing Prisma SQLite adapters for Bun runtime with Prisma 7.0.0.
 
-## Quick Start
+This benchmark was created to evaluate **[prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite)** against competing SQLite adapters for Bun.
 
-```bash
-# Run benchmarks for all adapters
-bun start
+---
 
-# Run correctness tests
-bun test
-
-# Type check
-bun run tsc --noEmit
-```
-
-## Project Structure
-
-```
-.
-├── src/
-│   ├── client.ts          # Adapter factory (createClient)
-│   ├── tests.ts           # Benchmark test definitions
-│   ├── index.ts           # Benchmark runner (bun start)
-│   └── ORIGNAL_TO_DELETE/ # Old code (to be deleted)
-├── tests/
-│   └── adapters.test.ts   # Correctness tests (bun test)
-├── prisma/
-│   ├── schema.prisma      # Database schema
-│   └── generated/         # Generated Prisma Client
-├── package.json
-└── tsconfig.json
-```
-
-## Adapters Tested
-
-1. **mmvsk-bun-sqlite** (`prisma-adapter-bun-sqlite`)
-   - Your implementation
-   - Best compatibility and correctness
-   - Native Bun SQLite support
-
-2. **abcx3-bun-sql** (`@abcx3/prisma-bun-adapter`)
-   - Competing Bun implementation
-   - Has critical bugs (connection reservation, error codes, foreign keys)
-
-3. **prisma-libsql** (`@prisma/adapter-libsql`)
-   - Official libSQL/Turso adapter
-   - Designed for remote databases (limited `:memory:` support)
-
-## Benchmark Tests (26 total)
-
-### Categories
-
-- **CRUD Operations** (7 tests): Create, Read, Update, Delete
-- **Relations** (4 tests): JOINs, nested creates, cascade deletes
-- **Filtering** (4 tests): Boolean, date, pagination, complex queries
-- **Types** (4 tests): BigInt, Decimal, Bytes (BLOB), JSON
-- **Transactions** (2 tests): Commit, rollback
-- **Aggregations** (3 tests): Count, aggregate, group by
-- **Raw Queries** (2 tests): $queryRaw, $executeRaw
-
-## Correctness Tests (8 total)
-
-1. **JOIN Duplicate Column Handling** - Ensures no data corruption
-2. **BLOB Serialization** - Bytes/BLOB round-trip
-3. **Boolean Type Conversion** - 1/0 conversion
-4. **DateTime Type Conversion** - ISO8601 handling
-5. **BigInt Handling** - Large integer preservation
-6. **Error Code Mapping** - Proper Prisma error codes (P2002, P2003, etc.)
-7. **Foreign Key Enforcement** - Referential integrity
-8. **Cascade Delete** - ON DELETE CASCADE behavior
-
-## Benchmark Results (Real Disk - SSD)
+## 🏆 Benchmark Results (Real Disk - SSD)
 
 **Test Environment:**
 - **Hardware**: SSD (real disk, not tmpfs)
@@ -99,11 +34,14 @@ Only comparing tests that **ALL adapters can pass**:
 | prisma-libsql | 115 | - |
 | abcx3-bun-sql | 111 | - |
 
-**Conclusion**: When comparing the same tests, **mmvsk-bun-sqlite is 2.1x faster** than both competitors.
+**Conclusion**: When comparing the same tests, **[prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite) is 2.1x faster** than both competitors.
 
 ### Correctness Analysis
 
-#### mmvsk-bun-sqlite ✅ **RECOMMENDED**
+#### ✅ mmvsk-bun-sqlite **RECOMMENDED**
+
+**[prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite)**
+
 - ✅ **100% test pass rate** (26/26 performance tests)
 - ✅ All CRUD operations work correctly
 - ✅ All relations and JOINs work
@@ -115,7 +53,10 @@ Only comparing tests that **ALL adapters can pass**:
 - ✅ Busy timeout configured (handles database locking)
 - **Production-ready** ✨
 
-#### prisma-libsql ⚠️ **ACCEPTABLE**
+#### ⚠️ prisma-libsql **ACCEPTABLE**
+
+`@prisma/adapter-libsql`
+
 - ✅ 100% test pass rate (26/26 tests)
 - ✅ Foreign keys enforced
 - ✅ Proper error handling
@@ -124,7 +65,10 @@ Only comparing tests that **ALL adapters can pass**:
 - ⚠️ Uses rollback journal mode (less concurrency than WAL)
 - Best for Turso cloud databases, not local SQLite
 
-#### abcx3-bun-sql ❌ **NOT RECOMMENDED**
+#### ❌ abcx3-bun-sql **NOT RECOMMENDED**
+
+`@abcx3/prisma-bun-adapter`
+
 - ❌ **73% test failure rate** (only 7/26 tests pass)
 - ❌ **Foreign keys DISABLED** (`foreign_keys = OFF`) - **DATA CORRUPTION RISK**
 - ❌ Connection reservation not supported (fails on most Prisma features)
@@ -137,7 +81,7 @@ Only comparing tests that **ALL adapters can pass**:
 
 ### Key Findings
 
-1. **mmvsk-bun-sqlite is the clear winner**: 2.1x faster with 100% correctness
+1. **[prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite) is the clear winner**: 2.1x faster with 100% correctness
 2. **prisma-libsql is reliable but slower**: Good for Turso, not optimal for local SQLite
 3. **abcx3-bun-sql is fundamentally broken**: 73% failure rate, no foreign key enforcement
 
@@ -150,46 +94,115 @@ Only comparing tests that **ALL adapters can pass**:
 | **busy_timeout** | 5000ms | 0ms | 0ms |
 | **synchronous** | Default | FULL | FULL |
 
-## Development
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+git clone https://github.com/mmvsk/prisma-adapter-bun-sqlite-benchmark.git
+cd prisma-adapter-bun-sqlite-benchmark
+bun install
+```
+
+### Run Benchmarks
+
+```bash
+# Run performance benchmarks for all adapters
+bun start
+
+# Run correctness tests
+bun test
+
+# Type check
+bun run tsc --noEmit
+```
+
+---
+
+## 📋 Test Coverage
+
+### Adapters Tested
+
+1. **mmvsk-bun-sqlite** ([prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite))
+   - Native Bun SQLite implementation
+   - 100% test compatibility
+   - Production-ready with full feature support
+
+2. **prisma-libsql** (`@prisma/adapter-libsql`)
+   - Official Prisma adapter for libSQL/Turso
+   - Designed for remote databases
+   - Works but slower for local SQLite
+
+3. **abcx3-bun-sql** (`@abcx3/prisma-bun-adapter`)
+   - Alternative Bun implementation
+   - Critical bugs: no connection reservation, disabled foreign keys
+   - Not recommended for production use
+
+### Performance Tests (26 total)
+
+- **CRUD Operations** (7 tests): Create, Read, Update, Delete
+- **Relations** (4 tests): JOINs, nested creates, cascade deletes
+- **Filtering** (4 tests): Boolean, date, pagination, complex queries
+- **Types** (4 tests): BigInt, Decimal, Bytes (BLOB), JSON
+- **Transactions** (2 tests): Commit, rollback
+- **Aggregations** (3 tests): Count, aggregate, group by
+- **Raw Queries** (2 tests): $queryRaw, $executeRaw
+
+### Correctness Tests (8 total)
+
+1. **JOIN Duplicate Column Handling** - Ensures no data corruption
+2. **BLOB Serialization** - Bytes/BLOB round-trip
+3. **Boolean Type Conversion** - 1/0 conversion
+4. **DateTime Type Conversion** - ISO8601 handling
+5. **BigInt Handling** - Large integer preservation
+6. **Error Code Mapping** - Proper Prisma error codes (P2002, P2003, etc.)
+7. **Foreign Key Enforcement** - Referential integrity
+8. **Cascade Delete** - ON DELETE CASCADE behavior
+
+---
+
+## 🛠️ Development
+
+### Project Structure
+
+```
+.
+├── src/
+│   ├── client.ts          # Adapter factory (createClient)
+│   ├── tests.ts           # Benchmark test definitions
+│   └── index.ts           # Benchmark runner (bun start)
+├── tests/
+│   └── adapters.test.ts   # Correctness tests (bun test)
+├── prisma/
+│   ├── schema.prisma      # Database schema
+│   └── generated/         # Generated Prisma Client
+├── package.json
+└── tsconfig.json
+```
 
 ### Adding New Tests
 
-**Benchmark tests**: Add to `src/tests.ts` in the `benchmarkTests` array.
+**Performance tests**: Add to `src/tests.ts` in the `benchmarkTests` array.
 
 **Correctness tests**: Add to `tests/adapters.test.ts` as a new `test()` block.
 
-### Testing Individual Adapters
+### Testing Specific Adapters
 
-Edit `src/index.ts` or `tests/adapters.test.ts` and modify the `ADAPTERS` array to test specific adapters only.
-
-## Configuration
-
-### Client Factory
-
-The `createClient()` function in `src/client.ts` handles adapter initialization:
+Edit `src/index.ts` and modify the `AdapterNames` array to test specific adapters only:
 
 ```typescript
-import { createClient } from "@/client";
-
-const prisma = await createClient("mmvsk-bun-sqlite", ":memory:");
+const AdapterNames: AdapterName[] = [
+  "mmvsk-bun-sqlite",
+  // "prisma-libsql",
+  // "abcx3-bun-sql",
+];
 ```
 
-### Database Schema
+---
 
-Defined in `prisma/schema.prisma`. After changes:
-
-```bash
-bunx prisma generate
-```
-
-## Environment
-
-- **Bun**: 1.3.2+
-- **Prisma**: 7.0.0
-- **Platform**: Linux/macOS
-- **Database**: SQLite (:memory: or file-based)
-
-## Notes
+## 📝 Notes
 
 ### Database Storage
 
@@ -200,27 +213,36 @@ bunx prisma generate
 ### tmpfs Testing (Optional)
 
 For rapid development/testing, you can symlink `data/` to tmpfs to reduce SSD wear:
+
 ```bash
+rm -rf data
 ln -s /tmp/bench-data data
 ```
 
-**Note**: Benchmark results on tmpfs will differ from real disk results due to:
+**Important**: Benchmark results on tmpfs will differ from real disk results:
 - tmpfs eliminates physical disk I/O, making file operation count the bottleneck
 - WAL mode (used by mmvsk-bun-sqlite) requires more file operations but provides better concurrency and safety
 - On real disks, WAL mode is faster; on tmpfs, simpler journal modes appear faster
 - **Published results above are from real disk (SSD)** for production-realistic benchmarks
 
-### Other Notes
+---
 
-- Type checking ensures all code is type-safe
-- Tests run with Prisma 7.0.0 on Bun 1.3.2+
+## 📦 Related Projects
 
-## License
+- **[prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite)** - The fastest Prisma SQLite adapter for Bun (this is what we're benchmarking!)
+- [@prisma/adapter-libsql](https://github.com/prisma/prisma/tree/main/packages/adapter-libsql) - Official adapter for libsql/Turso
+- [@prisma/adapter-better-sqlite3](https://github.com/prisma/prisma/tree/main/packages/adapter-better-sqlite3) - Official adapter for better-sqlite3 (Node.js only)
+- [Prisma Docs](https://www.prisma.io/docs) - Prisma ORM documentation
+- [Bun Docs](https://bun.sh/docs) - Bun runtime documentation
+
+---
+
+## 📄 License
 
 MIT
 
-## Links
+---
 
-- [prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite)
-- [Prisma Docs](https://www.prisma.io/docs)
-- [Bun Docs](https://bun.sh/docs)
+## 🙏 Acknowledgments
+
+This benchmark was created to evaluate **[prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite)** and ensure it provides the best performance and correctness for Bun + SQLite + Prisma users.
