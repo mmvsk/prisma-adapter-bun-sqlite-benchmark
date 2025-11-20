@@ -15,7 +15,7 @@
     "prisma": "^7.0.0"
   },
   "dependencies": {
-    "prisma-adapter-bun-sqlite": "^0.3.1",
+    "prisma-adapter-bun-sqlite": "^0.3.2",
     "@abcx3/prisma-bun-adapter": "^1.1.11",
     "@prisma/adapter-libsql": "^7.0.0",
     "@libsql/client": "^0.15.15"
