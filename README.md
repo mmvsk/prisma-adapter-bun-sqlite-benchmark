@@ -18,11 +18,11 @@ This benchmark was created to evaluate **[prisma-adapter-bun-sqlite](https://git
 
 | Adapter | Tests Passed | Tests Failed | Pass Rate | Avg Ops/Sec |
 |---------|--------------|--------------|-----------|-------------|
-| **mmvsk-bun-sqlite** | **26/26** ✅ | 0 | **100%** | 287 |
-| **prisma-libsql** | 26/26 ✅ | 0 | 100% | 139 |
-| **abcx3-bun-sql** | 7/26 ❌ | 19 | 27% | 322* |
+| **prisma-adapter-bun-sqlite** | **26/26** ✅ | 0 | **100%** | 287 |
+| **@prisma/adapter-libsql** | 26/26 ✅ | 0 | 100% | 139 |
+| **@abcx3/prisma-bun-adapter** | 7/26 ❌ | 19 | 27% | 322* |
 
-\* *Note: abcx3 average is misleading - calculated across all 26 tests including 19 failures*
+\* *Note: @abcx3/prisma-bun-adapter average is misleading - calculated across all 26 tests including 19 failures*
 
 ### Fair Comparison - Common Passing Tests (7 tests)
 
@@ -30,17 +30,17 @@ Only comparing tests that **ALL adapters can pass**:
 
 | Adapter | Avg Ops/Sec | Winner |
 |---------|-------------|--------|
-| **mmvsk-bun-sqlite** | **242** | **🏆 2.1x faster** |
-| prisma-libsql | 115 | - |
-| abcx3-bun-sql | 111 | - |
+| **prisma-adapter-bun-sqlite** | **242** | **🏆 2.1x faster** |
+| @prisma/adapter-libsql | 115 | - |
+| @abcx3/prisma-bun-adapter | 111 | - |
 
 **Conclusion**: When comparing the same tests, **[prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite) is 2.1x faster** than both competitors.
 
 ### Correctness Analysis
 
-#### ✅ mmvsk-bun-sqlite **RECOMMENDED**
+#### ✅ prisma-adapter-bun-sqlite **RECOMMENDED**
 
-**[prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite)**
+**[`prisma-adapter-bun-sqlite`](https://github.com/mmvsk/prisma-adapter-bun-sqlite)** - Native Bun SQLite adapter
 
 - ✅ **100% test pass rate** (26/26 performance tests)
 - ✅ All CRUD operations work correctly
@@ -53,21 +53,22 @@ Only comparing tests that **ALL adapters can pass**:
 - ✅ Busy timeout configured (handles database locking)
 - **Production-ready** ✨
 
-#### ⚠️ prisma-libsql **ACCEPTABLE**
+#### ⚠️ @prisma/adapter-libsql **ACCEPTABLE**
 
-`@prisma/adapter-libsql`
+**[`@prisma/adapter-libsql`](https://www.prisma.io/docs/orm/overview/databases/turso)** - Official Prisma adapter for Turso
 
 - ✅ 100% test pass rate (26/26 tests)
 - ✅ Foreign keys enforced
 - ✅ Proper error handling
-- ⚠️ **2.1x slower** than mmvsk-bun-sqlite
-- ⚠️ Designed for remote databases (libsql/Turso)
+- ⚠️ **2.1x slower** than prisma-adapter-bun-sqlite
+- ⚠️ Designed for remote databases ([libsql/Turso](https://turso.tech))
 - ⚠️ Uses rollback journal mode (less concurrency than WAL)
-- Best for Turso cloud databases, not local SQLite
+- ℹ️ **Note**: This is the only official Prisma adapter that works with Bun ([`@prisma/adapter-better-sqlite3`](https://www.prisma.io/docs/orm/overview/databases/sqlite) is Node.js-only). See [Bun's Prisma guide](https://bun.sh/docs/guides/ecosystem/prisma).
+- Best for Turso cloud databases, acceptable for local SQLite
 
-#### ❌ abcx3-bun-sql **NOT RECOMMENDED**
+#### ❌ @abcx3/prisma-bun-adapter **NOT RECOMMENDED**
 
-`@abcx3/prisma-bun-adapter`
+**[`@abcx3/prisma-bun-adapter`](https://github.com/FredrikBorgstrom/prisma-bun-adapter)** - Community Bun adapter
 
 - ❌ **73% test failure rate** (only 7/26 tests pass)
 - ❌ **Foreign keys DISABLED** (`foreign_keys = OFF`) - **DATA CORRUPTION RISK**
@@ -81,14 +82,14 @@ Only comparing tests that **ALL adapters can pass**:
 
 ### Key Findings
 
-1. **[prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite) is the clear winner**: 2.1x faster with 100% correctness
-2. **prisma-libsql is reliable but slower**: Good for Turso, not optimal for local SQLite
-3. **abcx3-bun-sql is fundamentally broken**: 73% failure rate, no foreign key enforcement
+1. **[`prisma-adapter-bun-sqlite`](https://github.com/mmvsk/prisma-adapter-bun-sqlite) is the clear winner**: 2.1x faster with 100% correctness
+2. **`@prisma/adapter-libsql` is reliable but slower**: Good for Turso, acceptable for local SQLite
+3. **`@abcx3/prisma-bun-adapter` is fundamentally broken**: 73% failure rate, no foreign key enforcement
 
 ### SQLite Configuration Comparison
 
-| Setting | mmvsk-bun-sqlite | prisma-libsql | abcx3-bun-sql |
-|---------|------------------|---------------|---------------|
+| Setting | prisma-adapter-bun-sqlite | @prisma/adapter-libsql | @abcx3/prisma-bun-adapter |
+|---------|---------------------------|------------------------|---------------------------|
 | **journal_mode** | WAL (better concurrency) | DELETE (rollback) | DELETE (rollback) |
 | **foreign_keys** | ✅ ON | ✅ ON | ❌ **OFF** |
 | **busy_timeout** | 5000ms | 0ms | 0ms |
@@ -125,18 +126,20 @@ bun run tsc --noEmit
 
 ### Adapters Tested
 
-1. **mmvsk-bun-sqlite** ([prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite))
+1. **[`prisma-adapter-bun-sqlite`](https://github.com/mmvsk/prisma-adapter-bun-sqlite)**
    - Native Bun SQLite implementation
    - 100% test compatibility
    - Production-ready with full feature support
 
-2. **prisma-libsql** (`@prisma/adapter-libsql`)
+2. **[`@prisma/adapter-libsql`](https://www.prisma.io/docs/orm/overview/databases/turso)**
    - Official Prisma adapter for libSQL/Turso
-   - Designed for remote databases
+   - Designed for remote databases ([Turso](https://turso.tech))
+   - The only official Prisma adapter that works with Bun ([`@prisma/adapter-better-sqlite3`](https://www.prisma.io/docs/orm/overview/databases/sqlite) is Node.js-only)
+   - Documented in [Bun's Prisma guide](https://bun.sh/docs/guides/ecosystem/prisma)
    - Works but slower for local SQLite
 
-3. **abcx3-bun-sql** (`@abcx3/prisma-bun-adapter`)
-   - Alternative Bun implementation
+3. **[`@abcx3/prisma-bun-adapter`](https://github.com/FredrikBorgstrom/prisma-bun-adapter)**
+   - Community Bun SQLite implementation
    - Critical bugs: no connection reservation, disabled foreign keys
    - Not recommended for production use
 
@@ -207,7 +210,7 @@ const AdapterNames: AdapterName[] = [
 ### Database Storage
 
 - Benchmarks use file-based databases stored in `data/` directory
-- All tests use file-based databases (not `:memory:`) because prisma-libsql doesn't support `:memory:` properly
+- All tests use file-based databases (not `:memory:`) because `@prisma/adapter-libsql` doesn't support `:memory:` properly
 - Each test gets a clean database for isolation
 
 ### tmpfs Testing (Optional)
@@ -221,7 +224,7 @@ ln -s /tmp/bench-data data
 
 **Important**: Benchmark results on tmpfs will differ from real disk results:
 - tmpfs eliminates physical disk I/O, making file operation count the bottleneck
-- WAL mode (used by mmvsk-bun-sqlite) requires more file operations but provides better concurrency and safety
+- WAL mode (used by `prisma-adapter-bun-sqlite`) requires more file operations but provides better concurrency and safety
 - On real disks, WAL mode is faster; on tmpfs, simpler journal modes appear faster
 - **Published results above are from real disk (SSD)** for production-realistic benchmarks
 
@@ -229,9 +232,11 @@ ln -s /tmp/bench-data data
 
 ## 📦 Related Projects
 
-- **[prisma-adapter-bun-sqlite](https://github.com/mmvsk/prisma-adapter-bun-sqlite)** - The fastest Prisma SQLite adapter for Bun (this is what we're benchmarking!)
-- [@prisma/adapter-libsql](https://github.com/prisma/prisma/tree/main/packages/adapter-libsql) - Official adapter for libsql/Turso
-- [@prisma/adapter-better-sqlite3](https://github.com/prisma/prisma/tree/main/packages/adapter-better-sqlite3) - Official adapter for better-sqlite3 (Node.js only)
+- **[`prisma-adapter-bun-sqlite`](https://github.com/mmvsk/prisma-adapter-bun-sqlite)** - The fastest Prisma SQLite adapter for Bun (this is what we're benchmarking!)
+- [`@prisma/adapter-libsql`](https://www.prisma.io/docs/orm/overview/databases/turso) - Official Prisma adapter for libSQL/Turso
+- [`@prisma/adapter-better-sqlite3`](https://www.prisma.io/docs/orm/overview/databases/sqlite) - Official Prisma adapter for better-sqlite3 (Node.js only, not compatible with Bun)
+- [`@abcx3/prisma-bun-adapter`](https://github.com/FredrikBorgstrom/prisma-bun-adapter) - Community Bun adapter (not recommended)
+- [Bun's Prisma Guide](https://bun.sh/docs/guides/ecosystem/prisma) - Official Bun documentation for using Prisma
 - [Prisma Docs](https://www.prisma.io/docs) - Prisma ORM documentation
 - [Bun Docs](https://bun.sh/docs) - Bun runtime documentation
 
