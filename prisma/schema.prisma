@@ -1,0 +1,49 @@
+generator client {
+  provider   = "prisma-client"
+  engineType = "client"
+  runtime    = "bun"
+  output     = "./generated"
+}
+
+datasource db {
+  provider = "sqlite"
+  // Note: In Prisma 7+, the URL is passed via adapter in PrismaClient constructor
+  // See: https://pris.ly/d/prisma7-client-config
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  name      String?
+  active    Boolean   @default(true)
+  balance   Decimal   @default(0)
+  createdAt DateTime  @default(now())
+  profile   Profile?
+  posts     Post[]
+  metadata  Json?
+}
+
+model Profile {
+  id       Int     @id @default(autoincrement())
+  userId   Int     @unique
+  bio      String?
+  avatar   Bytes?
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  views     BigInt   @default(0)
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tags      Tag[]
+}
+
+model Tag {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  posts Post[]
+}
