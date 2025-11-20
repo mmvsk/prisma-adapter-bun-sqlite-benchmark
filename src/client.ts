@@ -4,11 +4,13 @@ import { resolve } from "node:path";
 
 export type { PrismaClient };
 
-export type AdapterName = (
-	| "mmvsk-bun-sqlite"
-	| "prisma-libsql"
-	| "abcx3-bun-sql"
-);
+export type AdapterName = typeof AdapterNames[number];
+export const AdapterNames = <const>[
+	"mmvsk-bun-sqlite",
+	"nogo-bun-sqlite",
+	"prisma-libsql",
+	"abcx3-bun-sql",
+];
 
 export async function createClient(name: AdapterName, inMemory?: boolean) {
 	const url = getUrl(name, inMemory);
@@ -16,6 +18,12 @@ export async function createClient(name: AdapterName, inMemory?: boolean) {
 	if (name === "mmvsk-bun-sqlite") {
 		const { PrismaBunSqlite } = await import("prisma-adapter-bun-sqlite");
 		const adapter = new PrismaBunSqlite({ url });
+		return new PrismaClient({ adapter, log: [] });
+	}
+
+	if (name === "nogo-bun-sqlite") {
+		const { PrismaBunSQLite } = await import("@synapsenwerkstatt/prisma-bun-sqlite-adapter");
+		const adapter = new PrismaBunSQLite({ url });
 		return new PrismaClient({ adapter, log: [] });
 	}
 

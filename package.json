@@ -15,9 +15,10 @@
     "prisma": "^7.0.0"
   },
   "dependencies": {
-    "prisma-adapter-bun-sqlite": "^0.3.2",
     "@abcx3/prisma-bun-adapter": "^1.1.11",
+    "@libsql/client": "^0.15.15",
     "@prisma/adapter-libsql": "^7.0.0",
-    "@libsql/client": "^0.15.15"
+    "@synapsenwerkstatt/prisma-bun-sqlite-adapter": "^1.2.2",
+    "prisma-adapter-bun-sqlite": "^0.3.2"
   }
 }

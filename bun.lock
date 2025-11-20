@@ -8,7 +8,8 @@
         "@abcx3/prisma-bun-adapter": "^1.1.11",
         "@libsql/client": "^0.15.15",
         "@prisma/adapter-libsql": "^7.0.0",
-        "prisma-adapter-bun-sqlite": "^0.3.1",
+        "@synapsenwerkstatt/prisma-bun-sqlite-adapter": "^1.2.2",
+        "prisma-adapter-bun-sqlite": "^0.3.2",
       },
       "devDependencies": {
         "@types/bun": "^1.3.2",
@@ -101,6 +102,8 @@
     "@prisma/studio-core-licensed": ["@prisma/studio-core-licensed@0.8.0", "", { "peerDependencies": { "@types/react": "^18.0.0 || ^19.0.0", "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-SXCcgFvo/SC6/11kEOaQghJgCWNEWZUvPYKn/gpvMB9HLSG/5M8If7dWZtEQHhchvl8bh9A89Hw6mEKpsXFimA=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.0.0", "", {}, "sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA=="],
+
+    "@synapsenwerkstatt/prisma-bun-sqlite-adapter": ["@synapsenwerkstatt/prisma-bun-sqlite-adapter@1.2.2", "", { "dependencies": { "@prisma/driver-adapter-utils": "^6.15.0", "async-mutex": "^0.5.0" } }, "sha512-THcW2kwRKVqmJqXKjXoiYGY2c26w4hUhUzjVQTdnA4OsJKVyV2NWDY1yQZzFteToTsABoXaz/+dc1y83WXBIUw=="],
 
     "@types/bun": ["@types/bun@1.3.2", "", { "dependencies": { "bun-types": "1.3.2" } }, "sha512-t15P7k5UIgHKkxwnMNkJbWlh/617rkDGEdSsDbu+qNHTaz9SKf7aC8fiIlUdD5RPpH6GEkP0cK7WlvmrEBRtWg=="],
 
@@ -294,7 +297,7 @@
 
     "prisma": ["prisma@7.0.0", "", { "dependencies": { "@prisma/config": "7.0.0", "@prisma/dev": "0.13.0", "@prisma/engines": "7.0.0", "@prisma/studio-core-licensed": "0.8.0", "mysql2": "3.15.3", "postgres": "3.4.7" }, "peerDependencies": { "better-sqlite3": ">=9.0.0", "typescript": ">=5.4.0" }, "optionalPeers": ["better-sqlite3", "typescript"], "bin": { "prisma": "build/index.js" } }, "sha512-VZObZ1pQV/OScarYg68RYUx61GpFLH2mJGf9fUX4XxQxTst/6ZK7nkY86CSZ3zBW6U9lKRTsBrZWVz20X5G/KQ=="],
 
-    "prisma-adapter-bun-sqlite": ["prisma-adapter-bun-sqlite@0.3.1", "", { "dependencies": { "@prisma/driver-adapter-utils": "^7.0.0" }, "peerDependencies": { "@prisma/client": ">=7.0.0", "bun-types": ">=1.3.0" }, "optionalPeers": ["bun-types"] }, "sha512-kqVlOOHJxEEbknu2VsCjMxWxRmYkNGCq3mMPP6fT/mkeHGu+LCE+JfKuqOXkFs/LjNmbjjkiGWTbCROcEBT5BQ=="],
+    "prisma-adapter-bun-sqlite": ["prisma-adapter-bun-sqlite@0.3.2", "", { "dependencies": { "@prisma/driver-adapter-utils": "^7.0.0" }, "peerDependencies": { "@prisma/client": ">=7.0.0", "bun-types": ">=1.3.0" }, "optionalPeers": ["bun-types"] }, "sha512-Kc924r0C9p6MAHkh0Rljv38OtOfA5tbm7h/1OwaRZdqLd+QLCRr3bgZ3ITBOE3AGIHIQNbbKzXhjSYKaHnWPcA=="],
 
     "promise-limit": ["promise-limit@2.7.0", "", {}, "sha512-7nJ6v5lnJsXwGprnGXga4wx6d1POjvi5Qmf1ivTRxTjH4Z/9Czja/UCMLVmB9N93GeWOU93XaFaEt6jbuoagNw=="],
 

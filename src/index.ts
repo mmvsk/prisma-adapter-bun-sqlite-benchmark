@@ -1,12 +1,5 @@
-import { createClient, type AdapterName, type PrismaClient } from "@/client";
 import { benchmarkTests, getAllCategories, type BenchmarkTest } from "@/tests";
-import { getDataDir, getPath } from "@/client";
-
-const AdapterNames: AdapterName[] = [
-	"mmvsk-bun-sqlite",
-	"prisma-libsql",
-	"abcx3-bun-sql",
-];
+import { createClient, AdapterNames, type AdapterName, type PrismaClient, getDataDir, getPath } from "@/client";
 
 interface BenchmarkResult {
 	adapter: string;
