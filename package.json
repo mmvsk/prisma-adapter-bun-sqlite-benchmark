@@ -17,6 +17,7 @@
   "dependencies": {
     "@libsql/client": "^0.15.15",
     "@prisma/adapter-libsql": "^7.0.0",
-    "@synapsenwerkstatt/prisma-bun-sqlite-adapter": "^1.2.2"
+    "@synapsenwerkstatt/prisma-bun-sqlite-adapter": "^1.2.2",
+    "prisma-adapter-bun-sqlite": "^0.5.2"
   }
 }
