@@ -1,13 +1,7 @@
-import { createClient, type AdapterName } from "@/client";
+import { createClient, AdapterNames } from "@/client";
 import { Prisma } from "@/prisma-generated/client";
 
-const ADAPTERS: AdapterName[] = [
-	"mmvsk-bun-sqlite",
-	"prisma-libsql",
-	"abcx3-bun-sql",
-];
-
-for (const adapter of ADAPTERS) {
+for (const adapter of AdapterNames) {
 	console.log(`\n${"=".repeat(60)}`);
 	console.log(`📦 ${adapter}`);
 	console.log("=".repeat(60));

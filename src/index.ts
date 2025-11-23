@@ -24,6 +24,9 @@ interface AdapterSummary {
 	avgOpsPerSecond: number;
 }
 
+// Number of runs per adapter (keeps highest value)
+const RUNS_PER_ADAPTER = 2;
+
 async function setupDatabase(prisma: PrismaClient) {
 	await prisma.$executeRaw`
 		CREATE TABLE IF NOT EXISTS User (
@@ -144,9 +147,12 @@ async function runBenchmark(
 }
 
 async function runAdapterBenchmarks(
-	adapter: AdapterName
+	adapter: AdapterName,
+	silent = false
 ): Promise<BenchmarkResult[]> {
-	console.log(`📦 ${adapter}`);
+	if (!silent) {
+		console.log(`📦 ${adapter}`);
+	}
 
 	const results: BenchmarkResult[] = [];
 	let prisma: PrismaClient | undefined;
@@ -166,17 +172,21 @@ async function runAdapterBenchmarks(
 				const result = await runBenchmark(prisma, test, adapter);
 				results.push(result);
 
-				const icon = result.passed ? "✓" : "✗";
-				const speed = result.opsPerSecond > 0 ? `${result.opsPerSecond.toFixed(0)} ops/sec` : "failed";
-				const status = result.error ? `(${result.error.split("\n")[0]!.substring(0, 60)}...)` : "";
+				if (!silent) {
+					const icon = result.passed ? "✓" : "✗";
+					const speed = result.opsPerSecond > 0 ? `${result.opsPerSecond.toFixed(0)} ops/sec` : "failed";
+					const status = result.error ? `(${result.error.split("\n")[0]!.substring(0, 60)}...)` : "";
 
-				console.log(`  ${icon} ${test.name.padEnd(45)} ${speed.padStart(12)} ${status}`);
+					console.log(`  ${icon} ${test.name.padEnd(45)} ${speed.padStart(12)} ${status}`);
+				}
 			}
 		}
 
 		return results;
 	} catch (error) {
-		console.log(`  ❌ Setup failed: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
+		if (!silent) {
+			console.log(`  ❌ Setup failed: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
+		}
 		return results;
 	} finally {
 		if (prisma) {
@@ -294,6 +304,79 @@ function findCommonPassingTests(allResults: BenchmarkResult[][]): Set<string> {
 	return firstAdapterPassed;
 }
 
+// Merge multiple runs, keeping highest ops/sec for each test
+function mergeResults(runs: BenchmarkResult[][]): BenchmarkResult[] {
+	const bestByTest = new Map<string, BenchmarkResult>();
+
+	for (const run of runs) {
+		for (const result of run) {
+			const existing = bestByTest.get(result.test);
+			if (!existing || result.opsPerSecond > existing.opsPerSecond) {
+				bestByTest.set(result.test, result);
+			}
+		}
+	}
+
+	return Array.from(bestByTest.values());
+}
+
+// Print per-operation comparison table
+function printComparisonTable(allResults: BenchmarkResult[][]) {
+	console.log("\n" + "=".repeat(100));
+	console.log("📊 Per-Operation Comparison");
+	console.log("=".repeat(100));
+
+	// Get all test names from first adapter (they should all have the same tests)
+	const testNames = benchmarkTests.map(t => t.name);
+	const adapterNames = allResults.map(r => r[0]?.adapter || "Unknown");
+
+	// Header
+	const testColWidth = 45;
+	const adapterColWidth = 18;
+	console.log(
+		`\n${"Operation".padEnd(testColWidth)} ${adapterNames.map(a => a.padStart(adapterColWidth)).join(" ")}`
+	);
+	console.log("-".repeat(testColWidth + (adapterColWidth + 1) * adapterNames.length));
+
+	// Build lookup maps for quick access
+	const resultMaps = allResults.map(results => {
+		const map = new Map<string, BenchmarkResult>();
+		for (const r of results) {
+			map.set(r.test, r);
+		}
+		return map;
+	});
+
+	// Print each test row
+	for (const testName of testNames) {
+		const values: string[] = [];
+		const opsValues: number[] = [];
+
+		for (const resultMap of resultMaps) {
+			const result = resultMap.get(testName);
+			if (result && result.passed && !result.error) {
+				opsValues.push(result.opsPerSecond);
+				values.push(`${result.opsPerSecond.toFixed(0)}`);
+			} else {
+				opsValues.push(0);
+				values.push("-");
+			}
+		}
+
+		// Find the fastest (highest ops/sec)
+		const maxOps = Math.max(...opsValues);
+
+		// Format values with indicator for fastest
+		const formattedValues = values.map((v, i) => {
+			if (v === "-") return v.padStart(adapterColWidth);
+			const isFastest = opsValues[i] === maxOps && maxOps > 0;
+			return (isFastest ? `${v} 🏆` : v).padStart(adapterColWidth);
+		});
+
+		console.log(`${testName.padEnd(testColWidth)} ${formattedValues.join(" ")}`);
+	}
+}
+
 async function main() {
 	const dataDir = getDataDir();
 
@@ -301,21 +384,57 @@ async function main() {
 	console.log("=".repeat(80));
 	console.log(`Bun: ${Bun.version} | Date: ${new Date().toISOString()}`);
 	console.log(`\nTesting ${AdapterNames.length} adapters: ${AdapterNames.join(", ")}`);
+	console.log(`Runs per adapter: ${RUNS_PER_ADAPTER} (keeping highest value)`);
 	console.log();
 
 	await Bun.$`test -d '${dataDir}' || exit 1`;
 
-	// Run benchmarks for each adapter
-	const allResults: BenchmarkResult[][] = [];
-
+	// Phase 1: Silent warmup - run all adapters once to warm up JIT
+	console.log("🔥 Warming up JIT (silent run)...");
 	for (const adapter of AdapterNames) {
-		const results = await runAdapterBenchmarks(adapter);
-		allResults.push(results);
+		await runAdapterBenchmarks(adapter, true);
+	}
+	// Clean up warmup databases
+	for (const dbPath of AdapterNames.map(getPath)) {
+		try {
+			await Bun.$`rm '${dbPath}'`.quiet();
+		} catch { /* ignore */ }
+	}
+	console.log("✓ Warmup complete\n");
+
+	// Phase 2: Run each adapter RUNS_PER_ADAPTER times
+	// Store all runs for each adapter
+	const adapterRuns: Map<AdapterName, BenchmarkResult[][]> = new Map();
+	for (const adapter of AdapterNames) {
+		adapterRuns.set(adapter, []);
 	}
 
-	for (const dbPath of AdapterNames.map(getPath)) {
-		await Bun.$`rm '${dbPath}'`;
+	// Run adapters in rotation: adapter1, adapter2, adapter3, adapter1, adapter2, adapter3...
+	for (let run = 1; run <= RUNS_PER_ADAPTER; run++) {
+		console.log(`\n📍 Run ${run}/${RUNS_PER_ADAPTER}`);
+		console.log("-".repeat(80));
+
+		for (const adapter of AdapterNames) {
+			const results = await runAdapterBenchmarks(adapter);
+			adapterRuns.get(adapter)!.push(results);
+
+			// Clean up database after each run
+			try {
+				await Bun.$`rm '${getPath(adapter)}'`.quiet();
+			} catch { /* ignore */ }
+		}
 	}
+
+	// Phase 3: Merge results (keep highest ops/sec for each test)
+	const allResults: BenchmarkResult[][] = [];
+	for (const adapter of AdapterNames) {
+		const runs = adapterRuns.get(adapter)!;
+		const merged = mergeResults(runs);
+		allResults.push(merged);
+	}
+
+	// Print per-operation comparison table
+	printComparisonTable(allResults);
 
 	// Calculate and print summary
 	const summaries = allResults.map(calculateSummary);

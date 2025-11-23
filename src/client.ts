@@ -9,7 +9,7 @@ export const AdapterNames = <const>[
 	"mmvsk-bun-sqlite",
 	"nogo-bun-sqlite",
 	"prisma-libsql",
-	"abcx3-bun-sql",
+	//"abcx3-bun-sql",
 ];
 
 export async function createClient(name: AdapterName, inMemory?: boolean) {
@@ -33,11 +33,11 @@ export async function createClient(name: AdapterName, inMemory?: boolean) {
 		return new PrismaClient({ adapter, log: [] });
 	}
 
-	if (name === "abcx3-bun-sql") {
-		const { BunSQLiteAdapter } = await import("@abcx3/prisma-bun-adapter");
-		const adapter = new BunSQLiteAdapter(url);
-		return new PrismaClient({ adapter, log: [] });
-	}
+	//if (name === "abcx3-bun-sql") {
+	//	const { BunSQLiteAdapter } = await import("@abcx3/prisma-bun-adapter");
+	//	const adapter = new BunSQLiteAdapter(url);
+	//	return new PrismaClient({ adapter, log: [] });
+	//}
 
 	throw new Error(`Unknown adapter: ${name}`);
 }
