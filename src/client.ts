@@ -1,19 +1,17 @@
 import { PrismaClient } from "@/prisma-generated/client";
 import { resolve } from "node:path";
 
-
 export type { PrismaClient };
 
-export type AdapterName = typeof AdapterNames[number];
+export type AdapterName = (typeof AdapterNames)[number];
 export const AdapterNames = <const>[
 	"mmvsk-bun-sqlite",
 	"nogo-bun-sqlite",
 	"prisma-libsql",
-	//"abcx3-bun-sql",
 ];
 
-export async function createClient(name: AdapterName, inMemory?: boolean) {
-	const url = getUrl(name, inMemory);
+export async function createClient(name: AdapterName, dataDir?: string) {
+	const url = dataDir ? getFileUrl(name, dataDir) : ":memory:";
 
 	if (name === "mmvsk-bun-sqlite") {
 		const { PrismaBunSqlite } = await import("prisma-adapter-bun-sqlite");
@@ -22,7 +20,9 @@ export async function createClient(name: AdapterName, inMemory?: boolean) {
 	}
 
 	if (name === "nogo-bun-sqlite") {
-		const { PrismaBunSQLite } = await import("@synapsenwerkstatt/prisma-bun-sqlite-adapter");
+		const { PrismaBunSQLite } = await import(
+			"@synapsenwerkstatt/prisma-bun-sqlite-adapter"
+		);
 		const adapter = new PrismaBunSQLite({ url });
 		return new PrismaClient({ adapter, log: [] });
 	}
@@ -33,40 +33,13 @@ export async function createClient(name: AdapterName, inMemory?: boolean) {
 		return new PrismaClient({ adapter, log: [] });
 	}
 
-	//if (name === "abcx3-bun-sql") {
-	//	const { BunSQLiteAdapter } = await import("@abcx3/prisma-bun-adapter");
-	//	const adapter = new BunSQLiteAdapter(url);
-	//	return new PrismaClient({ adapter, log: [] });
-	//}
-
 	throw new Error(`Unknown adapter: ${name}`);
 }
 
-export async function removeDatabase(name: AdapterName) {
-	const url = getUrl(name, false);
-	const dbPath = Bun.fileURLToPath(url);
-	await Bun.$`rm '${dbPath}'`;
+export function getFilePath(name: AdapterName, dataDir: string) {
+	return resolve(dataDir, `db-${name}.sqlite`);
 }
 
-export function getDataDir() {
-	const rootDir = resolve(import.meta.dir, "..");
-	const dataDir = resolve(rootDir, "data");
-	return dataDir;
-}
-
-export function getPath(name: AdapterName) {
-	const dbPath = resolve(getDataDir(), `db-${name}.sqlite`);
-	return dbPath;
-}
-
-function getUrl(name: AdapterName, inMemory?: boolean) {
-	if (inMemory) {
-		if (name === "prisma-libsql") {
-			throw new Error("Adapter prisma-libsql won't work in :memory:");
-		}
-
-		return ":memory:" as const;
-	}
-
-	return Bun.pathToFileURL(getPath(name)).toString();
+function getFileUrl(name: AdapterName, dataDir: string) {
+	return Bun.pathToFileURL(getFilePath(name, dataDir)).toString();
 }

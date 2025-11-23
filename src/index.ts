@@ -1,5 +1,12 @@
 import { benchmarkTests, getAllCategories, type BenchmarkTest } from "@/tests";
-import { createClient, AdapterNames, type AdapterName, type PrismaClient, getDataDir, getPath } from "@/client";
+import {
+	createClient,
+	AdapterNames,
+	type AdapterName,
+	type PrismaClient,
+	getFilePath,
+} from "@/client";
+import { resolve } from "node:path";
 
 interface BenchmarkResult {
 	adapter: string;
@@ -26,6 +33,32 @@ interface AdapterSummary {
 
 // Number of runs per adapter (keeps highest value)
 const RUNS_PER_ADAPTER = 2;
+
+// Parse CLI args
+const useMemory = process.argv.includes("--memory");
+const fsArgIndex = process.argv.indexOf("--fs");
+const useFs = fsArgIndex !== -1;
+const fsDir = useFs && process.argv[fsArgIndex + 1] && !process.argv[fsArgIndex + 1]!.startsWith("--")
+	? process.argv[fsArgIndex + 1]
+	: undefined;
+
+if (!useMemory && !useFs) {
+	console.log("Usage: bun start --memory | --fs [<dir>]");
+	console.log("");
+	console.log("  --memory     Use :memory: databases (fast, but libsql may fail some tests)");
+	console.log("  --fs [<dir>] Use file-based databases (default: ./data/)");
+	console.log("");
+	console.log("Tip: For best results, symlink data/ to tmpfs:");
+	console.log("  rm -rf data && ln -s /tmp/bench-data data && mkdir -p /tmp/bench-data");
+	process.exit(1);
+}
+
+function getDataDir() {
+	if (fsDir) {
+		return resolve(fsDir);
+	}
+	return resolve(import.meta.dir, "..", "data");
+}
 
 async function setupDatabase(prisma: PrismaClient) {
 	await prisma.$executeRaw`
@@ -158,7 +191,7 @@ async function runAdapterBenchmarks(
 	let prisma: PrismaClient | undefined;
 
 	try {
-		prisma = await createClient(adapter);
+		prisma = await createClient(adapter, useFs ? getDataDir() : undefined);
 		await setupDatabase(prisma);
 
 		const categories = getAllCategories();
@@ -174,10 +207,17 @@ async function runAdapterBenchmarks(
 
 				if (!silent) {
 					const icon = result.passed ? "✓" : "✗";
-					const speed = result.opsPerSecond > 0 ? `${result.opsPerSecond.toFixed(0)} ops/sec` : "failed";
-					const status = result.error ? `(${result.error.split("\n")[0]!.substring(0, 60)}...)` : "";
+					const speed =
+						result.opsPerSecond > 0
+							? `${result.opsPerSecond.toFixed(0)} ops/sec`
+							: "failed";
+					const status = result.error
+						? `(${result.error.split("\n")[0]!.substring(0, 60)}...)`
+						: "";
 
-					console.log(`  ${icon} ${test.name.padEnd(45)} ${speed.padStart(12)} ${status}`);
+					console.log(
+						`  ${icon} ${test.name.padEnd(45)} ${speed.padStart(12)} ${status}`
+					);
 				}
 			}
 		}
@@ -185,7 +225,9 @@ async function runAdapterBenchmarks(
 		return results;
 	} catch (error) {
 		if (!silent) {
-			console.log(`  ❌ Setup failed: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
+			console.log(
+				`  ❌ Setup failed: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`
+			);
 		}
 		return results;
 	} finally {
@@ -215,93 +257,31 @@ function calculateSummary(results: BenchmarkResult[]): AdapterSummary {
 	};
 }
 
-function printSummaryTable(summaries: AdapterSummary[], allResults: BenchmarkResult[][]) {
+function printSummaryTable(summaries: AdapterSummary[]) {
 	console.log("\n" + "=".repeat(80));
-	console.log("📊 Summary - All Tests");
+	console.log("📊 Summary");
 	console.log("=".repeat(80));
 
 	console.log(
-		`\n${"Adapter".padEnd(25)} ${"Passed".padStart(8)} ${"Failed".padStart(8)} ${"Avg Ops/Sec".padStart(15)}`
+		`\n${"Adapter".padEnd(35)} ${"Passed".padStart(8)} ${"Failed".padStart(8)} ${"Avg Ops/Sec".padStart(15)}`
 	);
 	console.log("-".repeat(80));
 
 	for (const summary of summaries) {
-		const passRate = ((summary.passedTests / summary.totalTests) * 100).toFixed(0);
+		const passRate = (
+			(summary.passedTests / summary.totalTests) *
+			100
+		).toFixed(0);
 		console.log(
-			`${summary.adapter.padEnd(25)} ${String(summary.passedTests).padStart(8)} ${String(summary.failedTests).padStart(8)} ${summary.avgOpsPerSecond.toFixed(0).padStart(15)} (${passRate}%)`
+			`${summary.adapter.padEnd(35)} ${String(summary.passedTests).padStart(8)} ${String(summary.failedTests).padStart(8)} ${summary.avgOpsPerSecond.toFixed(0).padStart(15)} (${passRate}%)`
 		);
 	}
 
-	if (summaries.length === 0) {
-		console.log("\n⚠️  No results");
-		return;
+	// Check if any adapter has failures
+	const hasFailures = summaries.some(s => s.failedTests > 0);
+	if (hasFailures) {
+		console.log("\n⚠️  Note: Some adapters failed tests. Comparison may not be fair.");
 	}
-
-	// Find common passing tests (tests that ALL adapters passed)
-	const commonPassingTests = findCommonPassingTests(allResults);
-
-	if (commonPassingTests.size > 0) {
-		console.log("\n" + "=".repeat(80));
-		console.log(`📊 Fair Comparison - Common Passing Tests (${commonPassingTests.size}/${benchmarkTests.length})`);
-		console.log("=".repeat(80));
-
-		console.log(
-			`\n${"Adapter".padEnd(25)} ${"Common Tests".padStart(14)} ${"Avg Ops/Sec".padStart(15)}`
-		);
-		console.log("-".repeat(80));
-
-		const fairSummaries: Array<{adapter: string, avgOps: number, testCount: number}> = [];
-
-		for (const results of allResults) {
-			const commonResults = results.filter(r => commonPassingTests.has(r.test));
-			const totalOps = commonResults.reduce((sum, r) => sum + r.iterations, 0);
-			const totalTime = commonResults.reduce((sum, r) => sum + r.totalTime, 0);
-			const avgOpsPerSec = totalOps / (totalTime / 1000);
-
-			fairSummaries.push({
-				adapter: results[0]?.adapter || "Unknown",
-				avgOps: avgOpsPerSec,
-				testCount: commonResults.length
-			});
-		}
-
-		for (const summary of fairSummaries) {
-			console.log(
-				`${summary.adapter.padEnd(25)} ${String(summary.testCount).padStart(14)} ${summary.avgOps.toFixed(0).padStart(15)}`
-			);
-		}
-
-		const fairFastest = fairSummaries.reduce((prev, curr) =>
-			curr.avgOps > prev.avgOps ? curr : prev
-		);
-
-		console.log(`\n🏆 Fastest (fair comparison): ${fairFastest.adapter} (${fairFastest.avgOps.toFixed(0)} ops/sec)`);
-	}
-}
-
-function findCommonPassingTests(allResults: BenchmarkResult[][]): Set<string> {
-	if (allResults.length === 0) return new Set();
-
-	// Get tests that passed for the first adapter
-	const firstAdapterPassed = new Set(
-		allResults[0]!.filter(r => r.passed && !r.error).map(r => r.test)
-	);
-
-	// Intersect with tests that passed for all other adapters
-	for (let i = 1; i < allResults.length; i++) {
-		const adapterPassed = new Set(
-			allResults[i]!.filter(r => r.passed && !r.error).map(r => r.test)
-		);
-
-		// Keep only tests that are in both sets
-		for (const test of firstAdapterPassed) {
-			if (!adapterPassed.has(test)) {
-				firstAdapterPassed.delete(test);
-			}
-		}
-	}
-
-	return firstAdapterPassed;
 }
 
 // Merge multiple runs, keeping highest ops/sec for each test
@@ -327,19 +307,21 @@ function printComparisonTable(allResults: BenchmarkResult[][]) {
 	console.log("=".repeat(100));
 
 	// Get all test names from first adapter (they should all have the same tests)
-	const testNames = benchmarkTests.map(t => t.name);
-	const adapterNames = allResults.map(r => r[0]?.adapter || "Unknown");
+	const testNames = benchmarkTests.map((t) => t.name);
+	const adapterNames = allResults.map((r) => r[0]?.adapter || "Unknown");
 
 	// Header
 	const testColWidth = 45;
 	const adapterColWidth = 18;
 	console.log(
-		`\n${"Operation".padEnd(testColWidth)} ${adapterNames.map(a => a.padStart(adapterColWidth)).join(" ")}`
+		`\n${"Operation".padEnd(testColWidth)} ${adapterNames.map((a) => a.padStart(adapterColWidth)).join(" ")}`
 	);
-	console.log("-".repeat(testColWidth + (adapterColWidth + 1) * adapterNames.length));
+	console.log(
+		"-".repeat(testColWidth + (adapterColWidth + 1) * adapterNames.length)
+	);
 
 	// Build lookup maps for quick access
-	const resultMaps = allResults.map(results => {
+	const resultMaps = allResults.map((results) => {
 		const map = new Map<string, BenchmarkResult>();
 		for (const r of results) {
 			map.set(r.test, r);
@@ -373,43 +355,55 @@ function printComparisonTable(allResults: BenchmarkResult[][]) {
 			return (isFastest ? `${v} 🏆` : v).padStart(adapterColWidth);
 		});
 
-		console.log(`${testName.padEnd(testColWidth)} ${formattedValues.join(" ")}`);
+		console.log(
+			`${testName.padEnd(testColWidth)} ${formattedValues.join(" ")}`
+		);
+	}
+}
+
+async function cleanupFiles() {
+	if (!useFs) return;
+
+	for (const adapter of AdapterNames) {
+		try {
+			await Bun.$`rm '${getFilePath(adapter, getDataDir())}'`.quiet();
+		} catch {
+			/* ignore */
+		}
 	}
 }
 
 async function main() {
-	const dataDir = getDataDir();
+	const mode = useMemory ? ":memory:" : `file-based (${getDataDir()})`;
 
 	console.log("🚀 Prisma SQLite Adapters Benchmark");
 	console.log("=".repeat(80));
-	console.log(`Bun: ${Bun.version} | Date: ${new Date().toISOString()}`);
+	console.log(`Bun: ${Bun.version} | Mode: ${mode}`);
+	console.log(`Date: ${new Date().toISOString()}`);
 	console.log(`\nTesting ${AdapterNames.length} adapters: ${AdapterNames.join(", ")}`);
 	console.log(`Runs per adapter: ${RUNS_PER_ADAPTER} (keeping highest value)`);
 	console.log();
 
-	await Bun.$`test -d '${dataDir}' || exit 1`;
+	if (useFs) {
+		const dataDir = getDataDir();
+		await Bun.$`mkdir -p '${dataDir}'`;
+	}
 
 	// Phase 1: Silent warmup - run all adapters once to warm up JIT
 	console.log("🔥 Warming up JIT (silent run)...");
 	for (const adapter of AdapterNames) {
 		await runAdapterBenchmarks(adapter, true);
 	}
-	// Clean up warmup databases
-	for (const dbPath of AdapterNames.map(getPath)) {
-		try {
-			await Bun.$`rm '${dbPath}'`.quiet();
-		} catch { /* ignore */ }
-	}
+	await cleanupFiles();
 	console.log("✓ Warmup complete\n");
 
 	// Phase 2: Run each adapter RUNS_PER_ADAPTER times
-	// Store all runs for each adapter
 	const adapterRuns: Map<AdapterName, BenchmarkResult[][]> = new Map();
 	for (const adapter of AdapterNames) {
 		adapterRuns.set(adapter, []);
 	}
 
-	// Run adapters in rotation: adapter1, adapter2, adapter3, adapter1, adapter2, adapter3...
+	// Run adapters in rotation
 	for (let run = 1; run <= RUNS_PER_ADAPTER; run++) {
 		console.log(`\n📍 Run ${run}/${RUNS_PER_ADAPTER}`);
 		console.log("-".repeat(80));
@@ -417,11 +411,7 @@ async function main() {
 		for (const adapter of AdapterNames) {
 			const results = await runAdapterBenchmarks(adapter);
 			adapterRuns.get(adapter)!.push(results);
-
-			// Clean up database after each run
-			try {
-				await Bun.$`rm '${getPath(adapter)}'`.quiet();
-			} catch { /* ignore */ }
+			await cleanupFiles();
 		}
 	}
 
@@ -438,7 +428,7 @@ async function main() {
 
 	// Calculate and print summary
 	const summaries = allResults.map(calculateSummary);
-	printSummaryTable(summaries, allResults);
+	printSummaryTable(summaries);
 
 	console.log("\n✓ Benchmark complete\n");
 }
