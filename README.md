@@ -8,6 +8,7 @@ Performance benchmark comparing Prisma SQLite adapters for Bun runtime.
 git clone https://github.com/mmvsk/prisma-adapter-bun-sqlite-benchmark.git
 cd prisma-adapter-bun-sqlite-benchmark
 bun install
+bun generate              # Generate Prisma client
 bun start --memory        # Run benchmarks (in-memory)
 bun start --fs            # Run benchmarks (file-based, ./data/)
 bun start --fs /tmp/bench # Run benchmarks (custom directory)
