@@ -23,7 +23,7 @@ rm -rf data && ln -s /tmp/bench-data data && mkdir -p /tmp/bench-data
 | Adapter | Description |
 |---------|-------------|
 | [`prisma-adapter-bun-sqlite`](https://github.com/mmvsk/prisma-adapter-bun-sqlite) | Native Bun SQLite adapter |
-| [`@synapsenwerkstatt/prisma-bun-sqlite-adapter`](https://github.com/nicosommi/nogo) | Alternative Bun adapter |
+| [`@synapsenwerkstatt/prisma-bun-sqlite-adapter`](https://github.com/nogo/prisma-bun-sqlite-adapter) | Alternative Bun adapter |
 | [`@prisma/adapter-libsql`](https://www.prisma.io/docs/orm/overview/databases/turso) | Official libSQL/Turso adapter |
 
 ## Benchmark Tests (26 total)
